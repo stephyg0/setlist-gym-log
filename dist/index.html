@@ -194,7 +194,12 @@
     const $ = id => document.getElementById(id);
     const pad = n => String(n).padStart(2, '0');
     const dateKey = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-    function readRecords() { try { return JSON.parse(localStorage.getItem(STORE)) || []; } catch { return []; } }
+    function readRecords() {
+      try {
+        const saved=JSON.parse(localStorage.getItem(STORE)) || [];
+        return saved.filter(r=>!(r.date==='2026-09-21'&&r.start==='18:00'&&r.end==='19:15'&&r.exercises==='Back squat, Bench press, Seated row'));
+      } catch { return []; }
+    }
     function writeRecords() { localStorage.setItem(STORE, JSON.stringify(records)); }
     function mondayFor(offset=0) {
       const d = new Date(); d.setHours(12,0,0,0);
