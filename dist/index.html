@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A simple weekly gym log for tracking workout time and exercises.">
+  <title>Setlist — Gym Log</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23ff5c35'/%3E%3Cpath d='M13 25h7v14h-7zm31 0h7v14h-7zM20 29h24v6H20zM8 28h5v8H8zm43 0h5v8h-5z' fill='%23151210'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      --ink: #171513;
+      --muted: #6e6963;
+      --paper: #f6f4ef;
+      --card: #ffffff;
+      --line: #dcd8d1;
+      --hot: #ff5c35;
+      --hot-dark: #d93d19;
+      --night: #24211e;
+      --lime: #dfff4f;
+      --shadow: 0 18px 42px rgba(32, 27, 23, .08);
+    }
+    * { box-sizing: border-box; }
+    html { color-scheme: light; }
+    body {
+      margin: 0;
+      min-width: 320px;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 16px;
+    }
+    button, input, select, textarea { font: inherit; }
+    button { color: inherit; }
+    .shell { max-width: 1440px; margin: 0 auto; padding: 24px clamp(18px, 4vw, 64px) 60px; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-bottom: 30px; }
+    .brand { display: flex; align-items: center; gap: 12px; font-weight: 900; letter-spacing: -.045em; font-size: 1.35rem; }
+    .brand-mark { width: 38px; height: 38px; display: grid; place-items: center; background: var(--hot); border-radius: 11px; }
+    .brand-mark svg { width: 25px; }
+    .week-nav { display: flex; align-items: center; gap: 7px; }
+    .icon-btn, .ghost-btn {
+      border: 1px solid var(--line); background: rgba(255,255,255,.6); border-radius: 10px; height: 42px; cursor: pointer;
+      transition: transform .18s ease, background .18s ease;
+    }
+    .icon-btn { width: 42px; font-size: 1.35rem; line-height: 1; }
+    .ghost-btn { padding: 0 14px; font-weight: 750; font-size: .88rem; }
+    .icon-btn:hover, .ghost-btn:hover { background: #fff; transform: translateY(-1px); }
+    .top-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(310px, .5fr); gap: 18px; margin-bottom: 18px; }
+    .intro { padding: 10px 0; }
+    .eyebrow { margin: 0 0 12px; font-size: .77rem; font-weight: 850; letter-spacing: .12em; text-transform: uppercase; color: var(--hot-dark); }
+    h1 { margin: 0; max-width: 760px; font-size: clamp(2.25rem, 5vw, 5rem); line-height: .94; letter-spacing: -.065em; font-weight: 900; }
+    .week-range { margin: 18px 0 0; color: var(--muted); font-weight: 650; }
+    .score-card { background: var(--night); color: white; border-radius: 22px; padding: 24px; position: relative; overflow: hidden; min-height: 200px; box-shadow: var(--shadow); }
+    .score-card:after { content:""; position:absolute; width:170px; height:170px; border:38px solid rgba(223,255,79,.14); border-radius:50%; right:-68px; bottom:-92px; }
+    .score-label { margin: 0; color: #bfbab4; font-size: .82rem; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; }
+    .score { display: flex; align-items: baseline; gap: 9px; margin: 18px 0 10px; }
+    .score strong { font-size: clamp(3.5rem, 7vw, 5.6rem); letter-spacing: -.08em; line-height: .8; }
+    .score span { color: var(--lime); font-weight: 850; }
+    .score-meta { margin: 22px 0 0; color: #d7d2cc; }
+    .score-meta b { color: white; }
+    .section-head { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin: 34px 0 14px; }
+    h2 { margin: 0; font-size: 1.3rem; letter-spacing: -.035em; }
+    .section-hint { margin: 0; color: var(--muted); font-size: .86rem; }
+    .week-grid { display: grid; grid-template-columns: repeat(7, minmax(142px, 1fr)); gap: 10px; overflow-x: auto; padding-bottom: 8px; scrollbar-width: thin; }
+    .day-card { min-height: 245px; border: 1px solid var(--line); background: rgba(255,255,255,.62); border-radius: 17px; padding: 16px; display: flex; flex-direction: column; transition: border-color .2s, transform .2s, background .2s; }
+    .day-card.today { border-color: var(--hot); background: #fff; box-shadow: 0 0 0 1px var(--hot) inset; }
+    .day-card:hover { transform: translateY(-2px); background: #fff; }
+    .day-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+    .day-name { margin:0; font-weight: 850; font-size: .82rem; letter-spacing: .07em; text-transform: uppercase; }
+    .day-date { margin: 4px 0 0; color: var(--muted); font-size: .78rem; }
+    .day-duration { padding: 5px 7px; border-radius: 7px; background: #eeebe6; font-weight: 800; font-size: .74rem; white-space: nowrap; }
+    .day-card.today .day-duration { background: var(--hot); color: white; }
+    .entries { display: grid; gap: 9px; margin: 18px 0; }
+    .entry { border-left: 3px solid var(--hot); padding-left: 9px; }
+    .entry-time { display: block; font-weight: 800; font-size: .82rem; }
+    .entry-exercises { display: block; color: var(--muted); font-size: .78rem; line-height: 1.35; margin-top: 2px; }
+    .empty { margin: auto 0; color: #9a958f; font-size: .82rem; line-height: 1.4; }
+    .add-btn { margin-top: auto; width: 100%; border: 0; border-radius: 10px; background: transparent; padding: 9px 8px; text-align: left; font-weight: 820; font-size: .8rem; cursor: pointer; color: var(--hot-dark); }
+    .add-btn:hover { background: #fff0ec; }
+    .bottom-grid { display:grid; grid-template-columns: 1.15fr .85fr; gap: 18px; margin-top: 18px; }
+    .panel { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 22px; box-shadow: 0 8px 30px rgba(32,27,23,.04); }
+    .panel h3 { margin:0 0 18px; font-size: .97rem; }
+    .bar-row { display:grid; grid-template-columns: 72px 1fr 50px; align-items:center; gap: 12px; margin: 13px 0; font-size: .8rem; }
+    .bar-track { height: 9px; background:#efede8; border-radius:99px; overflow:hidden; }
+    .bar-fill { height:100%; width:0; background:var(--hot); border-radius:99px; transition:width .45s ease; }
+    .bar-value { text-align:right; font-weight:800; }
+    .exercise-list { display:flex; flex-wrap:wrap; gap:8px; }
+    .exercise-chip { border:1px solid var(--line); border-radius:99px; padding:8px 11px; font-size:.8rem; font-weight:750; background:#faf9f6; }
+    .exercise-chip b { color:var(--hot-dark); margin-left:4px; }
+    .panel-empty { color:var(--muted); font-size:.88rem; margin:0; }
+    dialog { border:0; padding:0; width:min(530px, calc(100vw - 28px)); border-radius:22px; box-shadow:0 30px 90px rgba(24,18,14,.25); background:white; color:var(--ink); }
+    dialog::backdrop { background:rgba(23,21,19,.54); backdrop-filter:blur(3px); }
+    .dialog-body { padding:25px; }
+    .dialog-head { display:flex; justify-content:space-between; align-items:flex-start; gap:20px; margin-bottom:22px; }
+    .dialog-head h2 { font-size:1.5rem; }
+    .dialog-head p { margin:6px 0 0; color:var(--muted); font-size:.87rem; }
+    .close-btn { border:0; background:#efede8; border-radius:50%; width:34px; height:34px; cursor:pointer; font-size:1.2rem; }
+    .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:15px; }
+    label { display:grid; gap:7px; font-size:.8rem; font-weight:780; color:#484440; }
+    label.full { grid-column:1 / -1; }
+    input, textarea { width:100%; border:1px solid #cdc8c1; border-radius:10px; padding:11px 12px; background:#fbfaf8; color:var(--ink); outline:none; }
+    input:focus, textarea:focus { border-color:var(--hot); box-shadow:0 0 0 3px rgba(255,92,53,.12); }
+    textarea { min-height:92px; resize:vertical; line-height:1.45; }
+    .dialog-actions { display:flex; justify-content:space-between; gap:12px; margin-top:22px; }
+    .primary-btn { border:0; border-radius:11px; background:var(--hot); color:white; padding:12px 18px; font-weight:850; cursor:pointer; }
+    .primary-btn:hover { background:var(--hot-dark); }
+    .danger-btn { display:none; border:0; background:transparent; color:#a12814; font-weight:760; cursor:pointer; }
+    .danger-btn.visible { display:block; }
+    .toast { position:fixed; left:50%; bottom:24px; transform:translate(-50%, 18px); background:var(--night); color:white; border-radius:12px; padding:12px 16px; font-weight:750; font-size:.86rem; opacity:0; pointer-events:none; transition:.25s; z-index:20; }
+    .toast.show { opacity:1; transform:translate(-50%, 0); }
+    @media (max-width: 800px) {
+      .shell { padding-top:18px; }
+      header { margin-bottom:22px; }
+      .top-grid, .bottom-grid { grid-template-columns:1fr; }
+      .score-card { min-height:170px; }
+      .section-head { align-items:start; flex-direction:column; gap:4px; }
+      .week-grid { grid-template-columns:repeat(7, 78vw); scroll-snap-type:x mandatory; margin-right:-18px; }
+      .day-card { scroll-snap-align:start; min-height:220px; }
+    }
+    @media (max-width: 500px) {
+      .brand span:last-child { display:none; }
+      .ghost-btn { padding:0 11px; }
+      .form-grid { grid-template-columns:1fr; }
+      label.full { grid-column:auto; }
+      h1 { font-size:3.25rem; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *:before, *:after { scroll-behavior:auto!important; transition:none!important; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div class="brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 28 20"><path d="M1 6h4v8H1zm22 0h4v8h-4zM5 8h18v4H5z" fill="#171513"/></svg></span><span>Setlist</span></div>
+      <nav class="week-nav" aria-label="Week navigation">
+        <button class="icon-btn" id="prevWeek" aria-label="Previous week">‹</button>
+        <button class="ghost-btn" id="todayWeek">This week</button>
+        <button class="icon-btn" id="nextWeek" aria-label="Next week">›</button>
+      </nav>
+    </header>
+
+    <section class="top-grid">
+      <div class="intro">
+        <p class="eyebrow">Weekly training log</p>
+        <h1>Show up.<br>Put in the work.</h1>
+        <p class="week-range" id="weekRange"></p>
+      </div>
+      <aside class="score-card" aria-label="Weekly summary">
+        <p class="score-label">Time under the bar</p>
+        <div class="score"><strong id="totalHours">0</strong><span id="totalUnit">MIN</span></div>
+        <p class="score-meta"><b id="sessionCount">0 sessions</b> logged across <span id="activeDays">0 days</span></p>
+      </aside>
+    </section>
+
+    <div class="section-head">
+      <h2>Your week</h2>
+      <p class="section-hint">Tap any day to log a workout</p>
+    </div>
+    <section class="week-grid" id="weekGrid" aria-label="Workout days"></section>
+
+    <section class="bottom-grid">
+      <div class="panel">
+        <h3>Time by day</h3>
+        <div id="timeChart"></div>
+      </div>
+      <div class="panel">
+        <h3>Exercises this week</h3>
+        <div class="exercise-list" id="exerciseList"></div>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="sessionDialog" aria-labelledby="dialogTitle">
+    <form method="dialog" id="sessionForm" class="dialog-body">
+      <div class="dialog-head">
+        <div><h2 id="dialogTitle">Log workout</h2><p id="dialogDate"></p></div>
+        <button type="button" class="close-btn" id="closeDialog" aria-label="Close">×</button>
+      </div>
+      <div class="form-grid">
+        <label>Start time<input id="startTime" type="time" required></label>
+        <label>End time<input id="endTime" type="time" required></label>
+        <label class="full">Exercises<textarea id="exercises" required placeholder="e.g. Back squat, bench press, rows"></textarea></label>
+      </div>
+      <div class="dialog-actions">
+        <button type="button" class="danger-btn" id="deleteSession">Delete session</button>
+        <button type="submit" class="primary-btn">Save workout</button>
+      </div>
+    </form>
+  </dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+    const STORE = 'setlist-gym-log-v1';
+    let records = readRecords();
+    let weekOffset = 0;
+    let selectedDate = '';
+    let editingId = null;
+
+    const $ = id => document.getElementById(id);
+    const pad = n => String(n).padStart(2, '0');
+    const dateKey = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    function readRecords() { try { return JSON.parse(localStorage.getItem(STORE)) || []; } catch { return []; } }
+    function writeRecords() { localStorage.setItem(STORE, JSON.stringify(records)); }
+    function mondayFor(offset=0) {
+      const d = new Date(); d.setHours(12,0,0,0);
+      const delta = (d.getDay()+6)%7;
+      d.setDate(d.getDate()-delta+(offset*7)); return d;
+    }
+    function weekDates() { const m=mondayFor(weekOffset); return DAYS.map((_,i)=>{const d=new Date(m);d.setDate(m.getDate()+i);return d;}); }
+    function minutesBetween(start,end) {
+      const [sh,sm]=start.split(':').map(Number), [eh,em]=end.split(':').map(Number);
+      let mins=(eh*60+em)-(sh*60+sm); if(mins<0) mins+=1440; return mins;
+    }
+    function durationLabel(mins) {
+      if (!mins) return '—';
+      const h=Math.floor(mins/60), m=mins%60;
+      return h ? `${h}h${m ? ` ${m}m` : ''}` : `${m}m`;
+    }
+    function formatRange(ds) {
+      const a=ds[0], b=ds[6];
+      if(a.getMonth()===b.getMonth()) return `${a.toLocaleDateString('en',{month:'long'})} ${a.getDate()}–${b.getDate()}, ${b.getFullYear()}`;
+      return `${a.toLocaleDateString('en',{month:'short',day:'numeric'})} – ${b.toLocaleDateString('en',{month:'short',day:'numeric',year:'numeric'})}`;
+    }
+    function splitExercises(value) { return value.split(/,|\n/).map(v=>v.trim()).filter(Boolean); }
+
+    function render() {
+      const dates=weekDates(), keys=dates.map(dateKey), weekRecords=records.filter(r=>keys.includes(r.date));
+      $('weekRange').textContent=formatRange(dates);
+      const total=weekRecords.reduce((sum,r)=>sum+minutesBetween(r.start,r.end),0);
+      if(total>=60){ $('totalHours').textContent=(total/60).toFixed(total%60?1:0); $('totalUnit').textContent='HOURS'; }
+      else { $('totalHours').textContent=total; $('totalUnit').textContent='MIN'; }
+      $('sessionCount').textContent=`${weekRecords.length} ${weekRecords.length===1?'session':'sessions'}`;
+      $('activeDays').textContent=`${new Set(weekRecords.map(r=>r.date)).size} days`;
+      const today=dateKey(new Date());
+      $('weekGrid').innerHTML=dates.map((d,i)=>{
+        const key=dateKey(d), entries=weekRecords.filter(r=>r.date===key).sort((a,b)=>a.start.localeCompare(b.start));
+        const mins=entries.reduce((s,r)=>s+minutesBetween(r.start,r.end),0);
+        return `<article class="day-card ${key===today?'today':''}">
+          <div class="day-top"><div><p class="day-name">${DAYS[i].slice(0,3)}</p><p class="day-date">${d.toLocaleDateString('en',{month:'short',day:'numeric'})}${key===today?' · Today':''}</p></div><span class="day-duration">${durationLabel(mins)}</span></div>
+          <div class="entries">${entries.length?entries.map(r=>`<button class="entry" data-edit="${r.id}" aria-label="Edit workout at ${r.start}" style="border-top:0;border-right:0;border-bottom:0;background:none;text-align:left;cursor:pointer"><span class="entry-time">${r.start}–${r.end}</span><span class="entry-exercises">${splitExercises(r.exercises).join(' · ')}</span></button>`).join(''):'<p class="empty">Rest day — or your next chance to show up.</p>'}</div>
+          <button class="add-btn" data-date="${key}">＋ Log workout</button>
+        </article>`;
+      }).join('');
+      renderChart(dates,weekRecords); renderExercises(weekRecords);
+    }
+    function renderChart(dates, weekRecords) {
+      const totals=dates.map(d=>weekRecords.filter(r=>r.date===dateKey(d)).reduce((s,r)=>s+minutesBetween(r.start,r.end),0));
+      const max=Math.max(...totals,60);
+      $('timeChart').innerHTML=totals.map((m,i)=>`<div class="bar-row"><span>${DAYS[i]}</span><div class="bar-track"><div class="bar-fill" style="width:${m/max*100}%"></div></div><span class="bar-value">${m}m</span></div>`).join('');
+    }
+    function renderExercises(weekRecords) {
+      const counts={}; weekRecords.forEach(r=>splitExercises(r.exercises).forEach(x=>{const clean=x.replace(/\s*\d+\s*[x×]\s*\d+.*/i,'').trim();counts[clean]=(counts[clean]||0)+1;}));
+      const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+      $('exerciseList').innerHTML=sorted.length?sorted.map(([name,count])=>`<span class="exercise-chip">${escapeHtml(name)} <b>×${count}</b></span>`).join(''):'<p class="panel-empty">Your exercise summary will appear after you log a workout.</p>';
+    }
+    function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+    function openDialog(date,id=null) {
+      selectedDate=date; editingId=id;
+      const d=new Date(date+'T12:00:00');
+      $('dialogDate').textContent=d.toLocaleDateString('en',{weekday:'long',month:'long',day:'numeric'});
+      const entry=id?records.find(r=>r.id===id):null;
+      $('startTime').value=entry?.start||'17:30'; $('endTime').value=entry?.end||'18:30'; $('exercises').value=entry?.exercises||'';
+      $('deleteSession').classList.toggle('visible',!!entry); $('sessionDialog').showModal();
+      setTimeout(()=>$('startTime').focus(),30);
+    }
+    function showToast(message){ $('toast').textContent=message; $('toast').classList.add('show'); setTimeout(()=>$('toast').classList.remove('show'),1800); }
+
+    $('weekGrid').addEventListener('click',e=>{
+      const add=e.target.closest('[data-date]'); if(add) openDialog(add.dataset.date);
+      const edit=e.target.closest('[data-edit]'); if(edit){const rec=records.find(r=>r.id===edit.dataset.edit);if(rec)openDialog(rec.date,rec.id);}
+    });
+    $('sessionForm').addEventListener('submit',e=>{
+      e.preventDefault(); const start=$('startTime').value,end=$('endTime').value,exercises=$('exercises').value.trim();
+      if(!start||!end||!exercises) return;
+      const rec={id:editingId||crypto.randomUUID(),date:selectedDate,start,end,exercises};
+      records=editingId?records.map(r=>r.id===editingId?rec:r):[...records,rec]; writeRecords(); $('sessionDialog').close(); render(); showToast(editingId?'Workout updated':'Workout logged');
+    });
+    $('deleteSession').addEventListener('click',()=>{ if(!editingId)return; records=records.filter(r=>r.id!==editingId);writeRecords();$('sessionDialog').close();render();showToast('Workout deleted'); });
+    $('closeDialog').addEventListener('click',()=>$('sessionDialog').close());
+    $('prevWeek').addEventListener('click',()=>{weekOffset--;render();});
+    $('nextWeek').addEventListener('click',()=>{weekOffset++;render();});
+    $('todayWeek').addEventListener('click',()=>{weekOffset=0;render();});
+
+    function registerTools(){
+      const mc=document.modelContext; if(!mc?.registerTool)return;
+      const register=(tool)=>Promise.resolve(mc.registerTool(tool)).catch(()=>{});
+      register({name:'log_workout',title:'Log workout',description:'Add a gym session with date, start time, end time, and exercises.',inputSchema:{type:'object',properties:{date:{type:'string',pattern:'^\\d{4}-\\d{2}-\\d{2}$'},start:{type:'string',pattern:'^\\d{2}:\\d{2}$'},end:{type:'string',pattern:'^\\d{2}:\\d{2}$'},exercises:{type:'string',minLength:1}},required:['date','start','end','exercises'],additionalProperties:false},annotations:{readOnlyHint:false,untrustedContentHint:false},execute(input){if(!/^\d{4}-\d{2}-\d{2}$/.test(input?.date||'')||!/^\d{2}:\d{2}$/.test(input?.start||'')||!/^\d{2}:\d{2}$/.test(input?.end||'')||!String(input?.exercises||'').trim())throw new Error('Valid date, times, and exercises are required.');const rec={id:crypto.randomUUID(),date:input.date,start:input.start,end:input.end,exercises:String(input.exercises).trim()};records.push(rec);writeRecords();render();return {id:rec.id,status:'logged',duration_minutes:minutesBetween(rec.start,rec.end)};}});
+      register({name:'read_weekly_progress',title:'Read weekly progress',description:'Read workout totals and sessions for the currently displayed week.',inputSchema:{type:'object',properties:{},additionalProperties:false},annotations:{readOnlyHint:true,untrustedContentHint:false},execute(){const keys=weekDates().map(dateKey),items=records.filter(r=>keys.includes(r.date));return {week_start:keys[0],week_end:keys[6],total_minutes:items.reduce((s,r)=>s+minutesBetween(r.start,r.end),0),sessions:items};}});
+    }
+    render(); registerTools();
+  </script>
+</body>
+</html>
