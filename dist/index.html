@@ -89,8 +89,18 @@
     label { display:grid; gap:7px; font-size:.8rem; font-weight:780; color:#484440; }
     label.full { grid-column:1 / -1; }
     input, textarea { width:100%; border:1px solid #cdc8c1; border-radius:10px; padding:11px 12px; background:#fbfaf8; color:var(--ink); outline:none; }
+    input[type="file"] { position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
     input:focus, textarea:focus { border-color:#111; box-shadow:0 0 0 3px rgba(0,0,0,.06); }
     textarea { min-height:92px; resize:vertical; line-height:1.45; }
+    .photo-field { grid-column:1/-1; display:block; }
+    .photo-label { display:inline-flex; align-items:center; gap:7px; border:1px solid var(--line); border-radius:8px; padding:9px 11px; cursor:pointer; font-size:.8rem; font-weight:650; background:#fff; }
+    .photo-label:hover { background:#f7f7f7; }
+    .photo-note { margin:8px 0 0; color:var(--muted); font-size:.75rem; font-weight:400; }
+    .photo-preview { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:10px; }
+    .photo-item { position:relative; aspect-ratio:1; overflow:hidden; border-radius:8px; background:#f2f2f2; }
+    .photo-item img { width:100%; height:100%; object-fit:cover; display:block; }
+    .photo-remove { position:absolute; top:5px; right:5px; width:24px; height:24px; border:0; border-radius:50%; background:rgba(0,0,0,.72); color:white; cursor:pointer; line-height:1; }
+    .photo-count { display:block; margin-top:5px; color:var(--muted); font-size:.73rem; }
     .dialog-actions { display:flex; justify-content:space-between; gap:12px; margin-top:22px; }
     .primary-btn { border:0; border-radius:8px; background:#111; color:white; padding:11px 17px; font-weight:700; cursor:pointer; }
     .primary-btn:hover { background:#333; }
@@ -174,6 +184,12 @@
         <label>Start time<input id="startTime" type="time" required></label>
         <label>End time<input id="endTime" type="time" required></label>
         <label class="full">Exercises<textarea id="exercises" required placeholder="e.g. Back squat, bench press, rows"></textarea></label>
+        <div class="photo-field">
+          <label class="photo-label" for="workoutPhotos">＋ Attach photos</label>
+          <input id="workoutPhotos" type="file" accept="image/*" multiple>
+          <p class="photo-note">Photos stay on this device.</p>
+          <div class="photo-preview" id="photoPreview" aria-live="polite"></div>
+        </div>
       </div>
       <div class="dialog-actions">
         <button type="button" class="danger-btn" id="deleteSession">Delete session</button>
@@ -190,6 +206,8 @@
     let weekOffset = 0;
     let selectedDate = '';
     let editingId = null;
+    let stagedPhotos = [];
+    let attachedPhotoIds = [];
 
     const $ = id => document.getElementById(id);
     const pad = n => String(n).padStart(2, '0');
@@ -201,6 +219,17 @@
       } catch { return []; }
     }
     function writeRecords() { localStorage.setItem(STORE, JSON.stringify(records)); }
+    function openPhotoDb() {
+      return new Promise((resolve,reject)=>{
+        const request=indexedDB.open('setlist-photos',1);
+        request.onupgradeneeded=()=>request.result.createObjectStore('photos');
+        request.onsuccess=()=>resolve(request.result);
+        request.onerror=()=>reject(request.error);
+      });
+    }
+    async function photoPut(id,blob) { const db=await openPhotoDb(); return new Promise((resolve,reject)=>{const tx=db.transaction('photos','readwrite');tx.objectStore('photos').put(blob,id);tx.oncomplete=()=>{db.close();resolve();};tx.onerror=()=>reject(tx.error);}); }
+    async function photoGet(id) { const db=await openPhotoDb(); return new Promise((resolve,reject)=>{const tx=db.transaction('photos','readonly'),req=tx.objectStore('photos').get(id);req.onsuccess=()=>{db.close();resolve(req.result);};req.onerror=()=>reject(req.error);}); }
+    async function photoDelete(id) { const db=await openPhotoDb(); return new Promise((resolve,reject)=>{const tx=db.transaction('photos','readwrite');tx.objectStore('photos').delete(id);tx.oncomplete=()=>{db.close();resolve();};tx.onerror=()=>reject(tx.error);}); }
     function mondayFor(offset=0) {
       const d = new Date(); d.setHours(12,0,0,0);
       const delta = (d.getDay()+6)%7;
@@ -237,7 +266,7 @@
         const mins=entries.reduce((s,r)=>s+minutesBetween(r.start,r.end),0);
         return `<article class="day-card ${key===today?'today':''}">
           <div class="day-top"><div><p class="day-name">${DAYS[i].slice(0,3)}</p><p class="day-date">${d.toLocaleDateString('en',{month:'short',day:'numeric'})}${key===today?' · Today':''}</p></div><span class="day-duration">${durationLabel(mins)}</span></div>
-          <div class="entries">${entries.length?entries.map(r=>`<button class="entry" data-edit="${r.id}" aria-label="Edit workout at ${r.start}" style="border-top:0;border-right:0;border-bottom:0;background:none;text-align:left;cursor:pointer"><span class="entry-time">${r.start}–${r.end}</span><span class="entry-exercises">${splitExercises(r.exercises).join(' · ')}</span></button>`).join(''):'<p class="empty">Rest day — or your next chance to show up.</p>'}</div>
+          <div class="entries">${entries.length?entries.map(r=>`<button class="entry" data-edit="${r.id}" aria-label="Edit workout at ${r.start}" style="border-top:0;border-right:0;border-bottom:0;background:none;text-align:left;cursor:pointer"><span class="entry-time">${r.start}–${r.end}</span><span class="entry-exercises">${splitExercises(r.exercises).join(' · ')}</span>${r.photoIds?.length?`<span class="photo-count">${r.photoIds.length} ${r.photoIds.length===1?'photo':'photos'}</span>`:''}</button>`).join(''):'<p class="empty">Rest day — or your next chance to show up.</p>'}</div>
           <button class="add-btn" data-date="${key}">＋ Log workout</button>
         </article>`;
       }).join('');
@@ -254,12 +283,22 @@
       $('exerciseList').innerHTML=sorted.length?sorted.map(([name,count])=>`<span class="exercise-chip">${escapeHtml(name)} <b>×${count}</b></span>`).join(''):'<p class="panel-empty">Your exercise summary will appear after you log a workout.</p>';
     }
     function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
-    function openDialog(date,id=null) {
+    async function renderPhotoPreview() {
+      const preview=$('photoPreview'); preview.innerHTML='';
+      const existing=await Promise.all(attachedPhotoIds.map(async id=>({id,blob:await photoGet(id),saved:true})));
+      [...existing.filter(x=>x.blob),...stagedPhotos].forEach(item=>{
+        const url=URL.createObjectURL(item.blob), el=document.createElement('div'); el.className='photo-item';
+        el.innerHTML=`<img src="${url}" alt="Workout attachment"><button type="button" class="photo-remove" data-photo-id="${item.id}" data-saved="${item.saved?'1':'0'}" aria-label="Remove photo">×</button>`;
+        el.querySelector('img').onload=()=>URL.revokeObjectURL(url); preview.appendChild(el);
+      });
+    }
+    async function openDialog(date,id=null) {
       selectedDate=date; editingId=id;
       const d=new Date(date+'T12:00:00');
       $('dialogDate').textContent=d.toLocaleDateString('en',{weekday:'long',month:'long',day:'numeric'});
       const entry=id?records.find(r=>r.id===id):null;
       $('startTime').value=entry?.start||'17:30'; $('endTime').value=entry?.end||'18:30'; $('exercises').value=entry?.exercises||'';
+      stagedPhotos=[]; attachedPhotoIds=[...(entry?.photoIds||[])]; $('workoutPhotos').value=''; await renderPhotoPreview();
       $('deleteSession').classList.toggle('visible',!!entry); $('sessionDialog').showModal();
       setTimeout(()=>$('startTime').focus(),30);
     }
@@ -268,14 +307,14 @@
     function exportWeek() {
       const dates=weekDates(), keys=dates.map(dateKey);
       const items=records.filter(r=>keys.includes(r.date)).sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start));
-      const header=['Date','Day','Start time','End time','Duration (minutes)','Duration','Exercises'];
+      const header=['Date','Day','Start time','End time','Duration (minutes)','Duration','Exercises','Photo count'];
       const rows=items.map(r=>{
         const mins=minutesBetween(r.start,r.end), day=new Date(r.date+'T12:00:00').toLocaleDateString('en',{weekday:'long'});
-        return [r.date,day,r.start,r.end,mins,durationLabel(mins),splitExercises(r.exercises).join('; ')];
+        return [r.date,day,r.start,r.end,mins,durationLabel(mins),splitExercises(r.exercises).join('; '),(r.photoIds||[]).length];
       });
       const total=items.reduce((sum,r)=>sum+minutesBetween(r.start,r.end),0);
-      rows.push(['','','','','','','']);
-      rows.push(['Weekly total','','','',total,durationLabel(total),`${items.length} ${items.length===1?'session':'sessions'}`]);
+      rows.push(['','','','','','','','']);
+      rows.push(['Weekly total','','','',total,durationLabel(total),`${items.length} ${items.length===1?'session':'sessions'}`,items.reduce((sum,r)=>sum+(r.photoIds||[]).length,0)]);
       const csv='\ufeff'+[header,...rows].map(row=>row.map(csvCell).join(',')).join('\r\n');
       const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}), url=URL.createObjectURL(blob), a=document.createElement('a');
       a.href=url; a.download=`gym-log-${keys[0]}-to-${keys[6]}.csv`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
@@ -286,13 +325,28 @@
       const add=e.target.closest('[data-date]'); if(add) openDialog(add.dataset.date);
       const edit=e.target.closest('[data-edit]'); if(edit){const rec=records.find(r=>r.id===edit.dataset.edit);if(rec)openDialog(rec.date,rec.id);}
     });
-    $('sessionForm').addEventListener('submit',e=>{
+    $('workoutPhotos').addEventListener('change',async e=>{
+      const files=[...e.target.files].filter(file=>file.type.startsWith('image/')).slice(0,8-stagedPhotos.length-attachedPhotoIds.length);
+      stagedPhotos.push(...files.map(file=>({id:crypto.randomUUID(),blob:file,saved:false})));
+      await renderPhotoPreview();
+    });
+    $('photoPreview').addEventListener('click',async e=>{
+      const remove=e.target.closest('[data-photo-id]'); if(!remove)return;
+      const id=remove.dataset.photoId;
+      if(remove.dataset.saved==='1') attachedPhotoIds=attachedPhotoIds.filter(x=>x!==id);
+      else stagedPhotos=stagedPhotos.filter(x=>x.id!==id);
+      await renderPhotoPreview();
+    });
+    $('sessionForm').addEventListener('submit',async e=>{
       e.preventDefault(); const start=$('startTime').value,end=$('endTime').value,exercises=$('exercises').value.trim();
       if(!start||!end||!exercises) return;
-      const rec={id:editingId||crypto.randomUUID(),date:selectedDate,start,end,exercises};
+      for(const photo of stagedPhotos) await photoPut(photo.id,photo.blob);
+      const previous=editingId?records.find(r=>r.id===editingId):null;
+      const removed=(previous?.photoIds||[]).filter(id=>!attachedPhotoIds.includes(id)); await Promise.all(removed.map(photoDelete));
+      const rec={id:editingId||crypto.randomUUID(),date:selectedDate,start,end,exercises,photoIds:[...attachedPhotoIds,...stagedPhotos.map(p=>p.id)]};
       records=editingId?records.map(r=>r.id===editingId?rec:r):[...records,rec]; writeRecords(); $('sessionDialog').close(); render(); showToast(editingId?'Workout updated':'Workout logged');
     });
-    $('deleteSession').addEventListener('click',()=>{ if(!editingId)return; records=records.filter(r=>r.id!==editingId);writeRecords();$('sessionDialog').close();render();showToast('Workout deleted'); });
+    $('deleteSession').addEventListener('click',async()=>{ if(!editingId)return; const rec=records.find(r=>r.id===editingId);await Promise.all((rec?.photoIds||[]).map(photoDelete));records=records.filter(r=>r.id!==editingId);writeRecords();$('sessionDialog').close();render();showToast('Workout deleted'); });
     $('closeDialog').addEventListener('click',()=>$('sessionDialog').close());
     $('prevWeek').addEventListener('click',()=>{weekOffset--;render();});
     $('nextWeek').addEventListener('click',()=>{weekOffset++;render();});

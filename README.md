@@ -6,6 +6,7 @@ A minimal weekly gym dashboard for logging workout times and exercises.
 
 - Log start and end times for each workout
 - Track exercises by day
+- Attach up to eight workout photos to each session
 - View weekly duration and session totals
 - Export the displayed week as a CSV spreadsheet
 - Save entries locally in the browser
